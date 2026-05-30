@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="メモ帳">
+<link rel="apple-touch-icon" href="icons/icon-512.png">
+<link rel="manifest" href="manifest.json">
+<title>メモ帳</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; background: #F2F0EB; min-height: 100vh; max-width: 430px; margin: 0 auto; overflow-x: hidden; }
+
+  /* Header */
+  .header { background: #1C1C1E; color: #fff; padding: 52px 20px 14px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .header-title { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; }
+  .back-btn { background: none; border: none; color: #C9963A; font-size: 16px; cursor: pointer; padding: 4px 0; font-family: inherit; }
+  .save-btn { background: #C9963A; color: #fff; border: none; border-radius: 8px; padding: 6px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+  /* Body */
+  .body { padding: 20px 16px 100px; }
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #888; text-transform: uppercase; margin-bottom: 10px; margin-top: 20px; }
+
+  /* Folder grid */
+  .folder-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+  .folder-card { background: #fff; border-radius: 12px; padding: 14px 14px 12px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: relative; display: flex; align-items: center; border: none; width: 100%; text-align: left; font-family: inherit; }
+  .folder-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
+  .folder-name { font-size: 14px; font-weight: 600; color: #1C1C1E; flex: 1; }
+  .folder-add { justify-content: center; opacity: 0.5; }
+  .folder-add-icon { font-size: 22px; color: #C9963A; }
+
+  /* Menu btn */
+  .menu-btn { background: none; border: none; color: #aaa; font-size: 18px; cursor: pointer; padding: 0 2px; line-height: 1; }
+
+  /* Memo list */
+  .memo-list { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .memo-item { padding: 14px 16px; border-bottom: 1px solid #F0EEE9; cursor: pointer; display: flex; align-items: center; justify-content: space-between; position: relative; }
+  .memo-item:last-child { border-bottom: none; }
+  .memo-title { font-size: 14px; color: #1C1C1E; }
+  .memo-meta { font-size: 11px; color: #aaa; margin-top: 2px; }
+  .memo-item-info { flex: 1; }
+
+  /* Add button */
+  .add-btn { position: fixed; bottom: 28px; right: calc(50% - 215px + 20px); width: 52px; height: 52px; border-radius: 50%; background: #1C1C1E; color: #C9963A; font-size: 28px; border: none; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; z-index: 200; }
+
+  /* Export */
+  .export-bar { display: flex; gap: 8px; margin-top: 24px; }
+  .export-btn { flex: 1; background: #1C1C1E; color: #C9963A; border: none; border-radius: 10px; padding: 10px 0; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; letter-spacing: 0.5px; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 300; display: flex; align-items: flex-end; }
+  .modal-box { background: #fff; border-radius: 20px 20px 0 0; padding: 24px 20px 48px; width: 100%; }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .modal-input { width: 100%; border: none; border-bottom: 2px solid #E0DDD8; background: transparent; padding: 8px 0; font-size: 16px; font-family: inherit; outline: none; margin-bottom: 16px; }
+  .color-row { display: flex; gap: 10px; margin-bottom: 20px; }
+  .color-dot { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; }
+  .color-dot.selected { border-color: #1C1C1E; }
+  .confirm-btn { width: 100%; background: #1C1C1E; color: #C9963A; border: none; border-radius: 12px; padding: 14px 0; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+  /* Context menu */
+  .context-menu { position: absolute; right: 8px; top: 36px; background: #fff; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 400; overflow: hidden; min-width: 110px; }
+  .context-item { padding: 12px 16px; font-size: 14px; cursor: pointer; border-bottom: 1px solid #F0EEE9; font-family: inherit; background: none; border-left: none; border-right: none; width: 100%; text-align: left; }
+  .context-item:last-child { border-bottom: none; }
+  .context-item.danger { color: #C4607A; }
+
+  /* Editor */
+  #editor-view { display: none; flex-direction: column; height: 100vh; background: #F2F0EB; }
+  .editor-title-input { border: none; background: transparent; font-size: 20px; font-weight: 700; padding: 16px 20px 8px; width: 100%; font-family: inherit; outline: none; color: #1C1C1E; }
+  .editor-divider { height: 1px; background: #F0EEE9; margin: 0 20px; }
+  .editor-content-input { border: none; background: transparent; flex: 1; padding: 12px 20px 80px; font-size: 15px; line-height: 1.8; font-family: inherit; outline: none; resize: none; color: #333; width: 100%; }
+  .char-count { position: fixed; bottom: 16px; right: calc(50% - 215px + 20px); background: rgba(28,28,30,0.75); color: #C9963A; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 20px; letter-spacing: 0.5px; backdrop-filter: blur(6px); pointer-events: none; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: #1C1C1E; color: #C9963A; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; z-index: 500; display: none; }
+
+  /* Empty state */
+  .empty { text-align: center; color: #aaa; margin-top: 60px; font-size: 14px; }
+
+  @media (max-width: 430px) {
+    .add-btn { right: 20px; }
+    .char-count { right: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Home View -->
+<div id="home-view">
+  <div class="header">
+    <span style="width:50px"></span>
+    <span class="header-title">メモ帳</span>
+    <span style="width:50px"></span>
+  </div>
+  <div class="body">
+    <div class="section-label">フォルダ</div>
+    <div class="folder-grid" id="folder-grid"></div>
+
+    <div class="section-label">最近のメモ</div>
+    <div class="memo-list" id="recent-list"></div>
+
+    <div class="export-bar">
+      <button class="export-btn" onclick="exportJSON()">JSON出力</button>
+      <button class="export-btn" onclick="exportText()">テキスト出力</button>
+    </div>
+  </div>
+</div>
+
+<!-- Folder View -->
+<div id="folder-view" style="display:none">
+  <div class="header">
+    <button class="back-btn" onclick="showHome()">← Home</button>
+    <span class="header-title" id="folder-view-title"></span>
+    <span style="width:50px"></span>
+  </div>
+  <div class="body">
+    <div class="memo-list" id="folder-memo-list"></div>
+    <div class="empty" id="folder-empty" style="display:none">メモがありません</div>
+  </div>
+  <button class="add-btn" onclick="newMemo()">+</button>
+</div>
+
+<!-- Editor View -->
+<div id="editor-view" style="display:flex;display:none">
+  <div class="header">
+    <button class="back-btn" onclick="saveAndBack()">← 戻る</button>
+    <span class="header-title" id="editor-folder-title"></span>
+    <button class="save-btn" onclick="saveMemo()">保存</button>
+  </div>
+  <input class="editor-title-input" id="editor-title" placeholder="タイトル" oninput="saveMemo()">
+  <div class="editor-divider"></div>
+  <textarea class="editor-content-input" id="editor-content" placeholder="ここに書く..." oninput="updateCharCount()"></textarea>
+  <div class="char-count" id="char-count">0 文字</div>
+</div>
+
+<!-- New Folder Modal -->
+<div class="modal-overlay" id="new-folder-modal" style="display:none" onclick="closeModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title">新しいフォルダ</div>
+    <input class="modal-input" id="new-folder-name" placeholder="フォルダ名" maxlength="20">
+    <div class="color-row" id="color-row"></div>
+    <button class="confirm-btn" onclick="addFolder()">作成</button>
+  </div>
+</div>
+
+<!-- Context Menu -->
+<div class="context-menu" id="context-menu" style="display:none">
+  <button class="context-item danger" id="context-delete" onclick="contextDelete()">削除</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const COLORS = [
+  { name: 'ゴールド', value: '#C9963A' },
+  { name: 'パープル', value: '#7B5EA7' },
+  { name: 'ブルー', value: '#4A7FB5' },
+  { name: 'グリーン', value: '#4A9B6F' },
+  { name: 'ピンク', value: '#C4607A' },
+  { name: 'グレー', value: '#6B7280' },
+];
+
+let state = load();
+let currentFolder = null;
+let currentMemo = null;
+let selectedColor = COLORS[0].value;
+let contextTarget = null;
+let contextType = null;
+
+function load() {
+  const saved = localStorage.getItem('memo-pwa-data');
+  if (saved) return JSON.parse(saved);
+  return {
+    folders: [
+      { id: '1', name: '歌詞', color: '#C9963A' },
+      { id: '2', name: '散文・エッセイ', color: '#7B5EA7' },
+      { id: '3', name: 'Sunoプロンプト', color: '#4A7FB5' },
+      { id: '4', name: 'その他', color: '#6B7280' },
+    ],
+    memos: []
+  };
+}
+
+function save() {
+  localStorage.setItem('memo-pwa-data', JSON.stringify(state));
+}
+
+function formatDate(iso) {
+  const d = new Date(iso);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function showHome() {
+  document.getElementById('home-view').style.display = '';
+  document.getElementById('folder-view').style.display = 'none';
+  document.getElementById('editor-view').style.display = 'none';
+  renderHome();
+}
+
+function showFolder(folderId) {
+  currentFolder = state.folders.find(f => f.id === folderId);
+  document.getElementById('home-view').style.display = 'none';
+  document.getElementById('folder-view').style.display = '';
+  document.getElementById('editor-view').style.display = 'none';
+  document.getElementById('folder-view-title').textContent = currentFolder.name;
+  renderFolderMemos();
+}
+
+function showEditor(memoId) {
+  currentMemo = state.memos.find(m => m.id === memoId);
+  document.getElementById('home-view').style.display = 'none';
+  document.getElementById('folder-view').style.display = 'none';
+  document.getElementById('editor-view').style.display = 'flex';
+  document.getElementById('editor-folder-title').textContent = currentFolder?.name || '';
+  document.getElementById('editor-title').value = currentMemo.title;
+  document.getElementById('editor-content').value = currentMemo.content;
+  updateCharCount();
+}
+
+function updateCharCount() {
+  const len = document.getElementById('editor-content').value.length;
+  document.getElementById('char-count').textContent = len + ' 文字';
+}
+
+function saveMemo() {
+  if (!currentMemo) return;
+  currentMemo.title = document.getElementById('editor-title').value || '無題';
+  currentMemo.content = document.getElementById('editor-content').value;
+  currentMemo.updatedAt = new Date().toISOString();
+  save();
+}
+
+function saveAndBack() {
+  saveMemo();
+  showFolder(currentFolder.id);
+}
+
+function newMemo() {
+  const memo = { id: Date.now().toString(), folderId: currentFolder.id, title: '新しいメモ', content: '', updatedAt: new Date().toISOString() };
+  state.memos.push(memo);
+  save();
+  showEditor(memo.id);
+}
+
+function renderHome() {
+  renderFolderGrid();
+  renderRecent();
+}
+
+function renderFolderGrid() {
+  const grid = document.getElementById('folder-grid');
+  grid.innerHTML = '';
+  state.folders.forEach(f => {
+    const count = state.memos.filter(m => m.folderId === f.id).length;
+    const card = document.createElement('div');
+    card.style.position = 'relative';
+    card.innerHTML = `
+      <button class="folder-card" style="border-left:4px solid ${f.color}" onclick="showFolder('${f.id}')">
+        <div class="folder-dot" style="background:${f.color}"></div>
+        <span class="folder-name">${f.name}</span>
+        <button class="menu-btn" onclick="event.stopPropagation();openContextMenu(event,'folder','${f.id}')">⋮</button>
+      </button>`;
+    grid.appendChild(card);
+  });
+  // Add folder button
+  const addCard = document.createElement('button');
+  addCard.className = 'folder-card folder-add';
+  addCard.style.borderLeft = '4px solid #C9963A';
+  addCard.innerHTML = '<span class="folder-add-icon">＋</span>';
+  addCard.onclick = openNewFolderModal;
+  grid.appendChild(addCard);
+}
+
+function renderRecent() {
+  const list = document.getElementById('recent-list');
+  const recent = [...state.memos].sort((a,b) => new Date(b.updatedAt)-new Date(a.updatedAt)).slice(0,5);
+  list.innerHTML = '';
+  if (recent.length === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:#aaa;font-size:14px">メモがありません</div>';
+    return;
+  }
+  recent.forEach(m => {
+    const folder = state.folders.find(f => f.id === m.folderId);
+    const item = document.createElement('div');
+    item.className = 'memo-item';
+    item.style.borderLeft = `3px solid ${folder?.color || '#ccc'}`;
+    item.innerHTML = `
+      <div class="memo-item-info">
+        <div class="memo-title">${m.title}</div>
+        <div class="memo-meta">${folder?.name || ''} · ${formatDate(m.updatedAt)}</div>
+      </div>`;
+    item.onclick = () => { currentFolder = folder; showEditor(m.id); };
+    list.appendChild(item);
+  });
+}
+
+function renderFolderMemos() {
+  const list = document.getElementById('folder-memo-list');
+  const empty = document.getElementById('folder-empty');
+  const memos = state.memos.filter(m => m.folderId === currentFolder.id);
+  list.innerHTML = '';
+  if (memos.length === 0) { list.style.display = 'none'; empty.style.display = ''; return; }
+  list.style.display = '';
+  empty.style.display = 'none';
+  memos.forEach(m => {
+    const item = document.createElement('div');
+    item.className = 'memo-item';
+    item.innerHTML = `
+      <div class="memo-item-info" onclick="showEditor('${m.id}')">
+        <div class="memo-title">${m.title}</div>
+        <div class="memo-meta">${formatDate(m.updatedAt)}</div>
+      </div>
+      <button class="menu-btn" onclick="event.stopPropagation();openContextMenu(event,'memo','${m.id}')">⋮</button>`;
+    list.appendChild(item);
+  });
+}
+
+// Context menu
+function openContextMenu(e, type, id) {
+  e.stopPropagation();
+  contextType = type;
+  contextTarget = id;
+  const menu = document.getElementById('context-menu');
+  menu.style.display = '';
+  const rect = e.target.getBoundingClientRect();
+  menu.style.position = 'fixed';
+  menu.style.top = (rect.bottom + 4) + 'px';
+  menu.style.right = (window.innerWidth - rect.right + 8) + 'px';
+}
+
+function contextDelete() {
+  if (contextType === 'folder') {
+    state.folders = state.folders.filter(f => f.id !== contextTarget);
+    state.memos = state.memos.filter(m => m.folderId !== contextTarget);
+  } else {
+    state.memos = state.memos.filter(m => m.id !== contextTarget);
+  }
+  save();
+  document.getElementById('context-menu').style.display = 'none';
+  if (contextType === 'folder') renderHome();
+  else renderFolderMemos();
+}
+
+document.addEventListener('click', () => document.getElementById('context-menu').style.display = 'none');
+
+// New folder modal
+function openNewFolderModal() {
+  document.getElementById('new-folder-name').value = '';
+  selectedColor = COLORS[0].value;
+  renderColorRow();
+  document.getElementById('new-folder-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('new-folder-name').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('new-folder-modal').style.display = 'none';
+}
+
+function renderColorRow() {
+  const row = document.getElementById('color-row');
+  row.innerHTML = '';
+  COLORS.forEach(c => {
+    const dot = document.createElement('div');
+    dot.className = 'color-dot' + (c.value === selectedColor ? ' selected' : '');
+    dot.style.background = c.value;
+    dot.onclick = () => { selectedColor = c.value; renderColorRow(); };
+    row.appendChild(dot);
+  });
+}
+
+function addFolder() {
+  const name = document.getElementById('new-folder-name').value.trim();
+  if (!name) return;
+  state.folders.push({ id: Date.now().toString(), name, color: selectedColor });
+  save();
+  closeModal();
+  renderHome();
+}
+
+// Export
+function exportJSON() {
+  const data = state.folders.map(f => ({
+    folder: f.name,
+    memos: state.memos.filter(m => m.folderId === f.id).map(m => ({ title: m.title, content: m.content, updatedAt: m.updatedAt }))
+  }));
+  download(JSON.stringify(data, null, 2), `memos_${today()}.json`, 'application/json');
+  showToast('JSON出力完了');
+}
+
+function exportText() {
+  let text = '';
+  state.folders.forEach(f => {
+    const fm = state.memos.filter(m => m.folderId === f.id);
+    if (!fm.length) return;
+    text += `\n# ${f.name}\n\n`;
+    fm.forEach(m => { text += `## ${m.title}\n${m.content}\n\n`; });
+  });
+  download(text, `memos_${today()}.txt`, 'text/plain');
+  showToast('テキスト出力完了');
+}
+
+function download(content, filename, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = filename;
+  a.click();
+}
+
+function today() { return new Date().toISOString().slice(0,10); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2000);
+}
+
+// Init
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js');
+}
+renderHome();
+</script>
+</body>
+</html>

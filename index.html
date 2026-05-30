@@ -83,6 +83,8 @@
     .char-count { right: 20px; }
   }
 </style>
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
 </head>
 <body>
 
@@ -101,7 +103,7 @@
     <div class="memo-list" id="recent-list"></div>
 
     <div class="export-bar">
-      <button class="export-btn" onclick="exportJSON()">JSON出力</button>
+      <button class="export-btn" onclick="googleLogin()" id="google-btn">Googleと同期</button>
       <button class="export-btn" onclick="exportText()">テキスト出力</button>
     </div>
   </div>
@@ -153,6 +155,107 @@
 <div class="toast" id="toast"></div>
 
 <script>
+
+// Google Drive連携
+const CLIENT_ID = '494718655180-lco9p7si89os4fonj9rrllgclo1rs5ct.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILE_NAME = 'memo-pwa-data.json';
+let tokenClient;
+let driveFileId = null;
+
+function initGoogleDrive() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { showToast('Googleログイン失敗'); return; }
+      showToast('Googleに接続しました');
+      await syncFromDrive();
+    },
+  });
+}
+
+function googleLogin() {
+  tokenClient.requestAccessToken();
+}
+
+async function syncFromDrive() {
+  try {
+    // ファイル検索
+    const res = await gapi.client.drive.files.list({
+      spaces: 'appDataFolder',
+      fields: 'files(id, name)',
+      q: `name='${DRIVE_FILE_NAME}'`
+    });
+    const files = res.result.files;
+    if (files && files.length > 0) {
+      driveFileId = files[0].id;
+      // ファイル読み込み
+      const fileRes = await gapi.client.drive.files.get({
+        fileId: driveFileId,
+        alt: 'media'
+      });
+      const data = JSON.parse(fileRes.body);
+      state = data;
+      localStorage.setItem('memo-pwa-data', JSON.stringify(state));
+      renderHome();
+      showToast('Driveから同期しました');
+    } else {
+      // ファイルがなければアップロード
+      await saveToDrive();
+    }
+  } catch(e) {
+    console.error(e);
+    showToast('同期エラー');
+  }
+}
+
+async function saveToDrive() {
+  try {
+    const content = JSON.stringify(state);
+    const blob = new Blob([content], {type: 'application/json'});
+    
+    if (driveFileId) {
+      // 更新
+      await gapi.client.request({
+        path: `/upload/drive/v3/files/${driveFileId}`,
+        method: 'PATCH',
+        params: {uploadType: 'media'},
+        body: content
+      });
+    } else {
+      // 新規作成
+      const metadata = {
+        name: DRIVE_FILE_NAME,
+        parents: ['appDataFolder']
+      };
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+      form.append('file', blob);
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + gapi.client.getToken().access_token },
+        body: form
+      });
+      const data = await res.json();
+      driveFileId = data.id;
+    }
+  } catch(e) {
+    console.error('Drive保存エラー', e);
+  }
+}
+
+function gapiLoaded() {
+  gapi.load('client', async () => {
+    await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'] });
+    initGoogleDrive();
+  });
+}
+
+window.addEventListener('load', () => {
+  if (typeof google !== 'undefined' && typeof gapi !== 'undefined') gapiLoaded();
+});
+
 const COLORS = [
   { name: 'ゴールド', value: '#C9963A' },
   { name: 'パープル', value: '#7B5EA7' },
@@ -185,6 +288,9 @@ function load() {
 
 function save() {
   localStorage.setItem('memo-pwa-data', JSON.stringify(state));
+  if (driveFileId !== null || (typeof gapi !== 'undefined' && gapi.client && gapi.client.getToken())) {
+    saveToDrive();
+  }
 }
 
 function formatDate(iso) {

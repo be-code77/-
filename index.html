@@ -39,6 +39,10 @@ html, body {
   z-index: 0;
 }
 
+:root {
+  --shelf-y: 396px; /* 棚板上面のY座標 - ここだけ変えれば全本追従 */
+}
+
 .book {
   position: absolute;
   z-index: 2;
@@ -53,13 +57,12 @@ html, body {
 .book:hover { transform: translateY(-12px); }
 .book:active { transform: translateY(-20px) scale(1.03); }
 
-/* 棚板上面 CSS top=396px、本の底を396pxに合わせる → top = 396 - 160 = 236px */
-.book-lyrics  { left: 18px;  top: 236px; }
-.book-poem    { left: 100px; top: 236px; }
-.book-suno    { left: 182px; top: 236px; }
-.book-diary   { left: 272px; top: 236px; }
-.book-thought { left: 312px; top: 236px; }
-.book-idea    { left: 348px; top: 236px; }
+.book-lyrics  { left: 20px;  top: calc(var(--shelf-y) - 160px); }
+.book-poem    { left: 105px; top: calc(var(--shelf-y) - 160px); }
+.book-suno    { left: 195px; top: calc(var(--shelf-y) - 160px); }
+.book-diary   { left: 280px; top: calc(var(--shelf-y) - 160px); }
+.book-thought { left: 318px; top: calc(var(--shelf-y) - 160px); }
+.book-idea    { left: 350px; top: calc(var(--shelf-y) - 160px); }
 
 /* ヘッダー */
 #header {

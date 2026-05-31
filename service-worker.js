@@ -1,12 +1,21 @@
-const CACHE_NAME = 'memo-pwa-v1';
-const ASSETS = ['/', '/index.html', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE_NAME = 'shelf-v1';
+const ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  '/-/assets/bg.png',
+  '/-/assets/book_lyrics.png',
+  '/-/assets/book_poem.png',
+  '/-/assets/book_suno.png',
+  '/-/assets/book_diary.png',
+  '/-/assets/book_thought.png',
+  '/-/assets/book_idea.png',
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
 });
 
 self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
-  );
+  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
 });

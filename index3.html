@@ -319,46 +319,44 @@ function updateCount() {
   let walkInterval = null;
   let walkPhase = 0;
 
-  // 長押し → ヒビ
-  zone.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    if (state !== 'idle') return;
-    longPressTimer = setTimeout(() => {
-      state = 'cracked';
-      crackSvg.style.opacity = '1';
-      // ヒビアニメーション
-      ['c1','c2','c3','c4','c5','c6'].forEach((id, i) => {
-        setTimeout(() => {
-          const el = document.getElementById(id);
-          el.style.transition = `stroke-dashoffset ${0.15 + i*0.05}s ease`;
-          el.style.strokeDashoffset = '0';
-        }, i * 60);
-      });
-    }, 600);
-  }, { passive: false });
+  let lastTap1 = 0;
+  let lastTap2 = 0;
+  let tapCount = 0;
 
-  zone.addEventListener('touchend', () => {
-    clearTimeout(longPressTimer);
-  });
-
-  // ダブルタップ → 穴＋てんとう虫出現
+  // ダブルタップ → ヒビ
   zone.addEventListener('touchend', (e) => {
-    if (state !== 'cracked') return;
     const now = Date.now();
-    if (now - lastTap < 350) {
-      // ダブルタップ確定
-      state = 'open';
-      hole.style.width = '22px';
-      hole.style.height = '22px';
-      hole.style.marginLeft = '-11px';
-      hole.style.marginTop = '-11px';
-      setTimeout(() => {
-        bug.style.display = 'block';
-        state = 'walking';
-        startWalking();
-      }, 500);
+    if (now - lastTap1 < 350) {
+      tapCount++;
+      if (tapCount === 1 && state === 'idle') {
+        // ダブルタップ → ヒビ
+        state = 'cracked';
+        crackSvg.style.opacity = '1';
+        ['c1','c2','c3','c4','c5','c6'].forEach((id, i) => {
+          setTimeout(() => {
+            const el = document.getElementById(id);
+            el.style.transition = `stroke-dashoffset ${0.15 + i*0.05}s ease`;
+            el.style.strokeDashoffset = '0';
+          }, i * 60);
+        });
+      } else if (tapCount === 2 && state === 'cracked') {
+        // もう一度ダブルタップ → 穴＋てんとう虫
+        state = 'open';
+        hole.style.width = '22px';
+        hole.style.height = '22px';
+        hole.style.marginLeft = '-11px';
+        hole.style.marginTop = '-11px';
+        setTimeout(() => {
+          bug.style.display = 'block';
+          state = 'walking';
+          startWalking();
+        }, 500);
+        tapCount = 0;
+      }
+    } else {
+      tapCount = 0;
     }
-    lastTap = now;
+    lastTap1 = now;
   });
 
   function startWalking() {

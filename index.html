@@ -346,12 +346,12 @@ function updateCount() {
     bug.src = goRightFirst ? WALK_RIGHT : WALK_LEFT;
     bug.style.width = '44px';
     // 穴の位置から出てくる
-    bug.style.left = '220px';
-    bug.style.top = '580px';
+    bug.style.left = '205px';
+    bug.style.top = '550px';
     bug.style.transition = 'none';
     let steps = 0;
     const tableY = 730;
-    bugX = 220; bugY = 580;
+    bugX = 205; bugY = 550;
     setTimeout(() => {
       moveTo(bugX, tableY, 1200, () => {
         walkInterval = setInterval(() => {
